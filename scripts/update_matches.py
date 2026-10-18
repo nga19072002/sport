@@ -1,106 +1,99 @@
+
 #!/usr/bin/env python3
-"""
-Fetch an authorized JSON feed and write matches.json.
+"""Fetch football fixtures from API-Football and update matches.json."""
 
-Expected feed shape:
-[
-  {
-    "home": "Home team",
-    "away": "Away team",
-    "kickoff": "2026-10-16T20:30:00+07:00",
-    "status": "Scheduled",
-    "watchUrl": "https://official.example/match-page"
-  }
-]
-
-Only use a feed/API you are authorized to access and reuse.
-This script does not scrape websites or extract video stream URLs.
-"""
 import json
 import os
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlparse
+from urllib.parse import urlencode
 from urllib.request import Request, urlopen
+from zoneinfo import ZoneInfo
 
+API_URL = "https://v3.football.api-sports.io/fixtures"
+API_KEY = os.environ.get("API_FOOTBALL_KEY", "").strip()
 OUTPUT = Path("matches.json")
-FEED_URL = os.environ.get("MATCHES_FEED_URL", "").strip()
+TZ = ZoneInfo("Asia/Ho_Chi_Minh")
 
 
-def fail(message: str) -> None:
+def fail(message):
     print(f"ERROR: {message}", file=sys.stderr)
     raise SystemExit(1)
 
 
-def valid_https_url(value: str) -> bool:
-    try:
-        parsed = urlparse(value)
-        return parsed.scheme == "https" and bool(parsed.hostname)
-    except ValueError:
-        return False
+if not API_KEY:
+    fail("Missing GitHub Actions secret API_FOOTBALL_KEY.")
 
+today = datetime.now(TZ).date()
+dates = [today, today + timedelta(days=1)]
+matches = []
 
-if not FEED_URL or not valid_https_url(FEED_URL):
-    fail(
-        "Set the MATCHES_FEED_URL GitHub Actions secret to an authorized "
-        "HTTPS JSON feed. No website has been scraped."
+for match_date in dates:
+    params = urlencode({
+        "date": match_date.isoformat(),
+        "timezone": "Asia/Ho_Chi_Minh",
+    })
+    request = Request(
+        f"{API_URL}?{params}",
+        headers={
+            "x-apisports-key": API_KEY,
+            "Accept": "application/json",
+            "User-Agent": "FootballTV-MatchesUpdater/1.0",
+        },
     )
 
-request = Request(
-    FEED_URL,
-    headers={
-        "Accept": "application/json",
-        "User-Agent": "FootballTV-MatchesUpdater/1.0"
-    },
-)
+    try:
+        with urlopen(request, timeout=30) as response:
+            data = json.load(response)
+    except HTTPError as exc:
+        fail(f"API returned HTTP {exc.code}. Check API key and plan.")
+    except (URLError, TimeoutError, json.JSONDecodeError) as exc:
+        fail(f"Could not read API response: {exc}")
 
-try:
-    with urlopen(request, timeout=25) as response:
-        if response.status != 200:
-            fail(f"Feed returned HTTP {response.status}")
-        raw = json.load(response)
-except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
-    fail(f"Could not read valid JSON from the configured feed: {exc}")
+    if data.get("errors"):
+        fail(f"API-Football error: {data['errors']}")
 
-# Some APIs wrap their list in {"matches": [...]}; accept either format.
-if isinstance(raw, dict) and isinstance(raw.get("matches"), list):
-    raw = raw["matches"]
-if not isinstance(raw, list):
-    fail("Unsupported feed format: expected a JSON array or {'matches': [...]}.")
+    for item in data.get("response", []):
+        fixture = item.get("fixture", {})
+        teams = item.get("teams", {})
+        home = teams.get("home", {}).get("name", "")
+        away = teams.get("away", {}).get("name", "")
 
-cleaned = []
-for item in raw:
-    if not isinstance(item, dict):
-        continue
+        if not home or not away:
+            continue
 
-    home = str(item.get("home", item.get("homeTeam", ""))).strip()
-    away = str(item.get("away", item.get("awayTeam", ""))).strip()
-    kickoff = str(item.get("kickoff", item.get("startTime", ""))).strip()
-    status = str(item.get("status", "Chưa rõ trạng thái")).strip()
-    watch_url = str(item.get("watchUrl", item.get("officialUrl", ""))).strip()
+        status_info = fixture.get("status", {})
+        status_code = status_info.get("short", "")
+        status_text = status_info.get("long", "")
 
-    # A valid fixture must have two teams. Only retain HTTPS viewing/info pages.
-    if not home or not away or not valid_https_url(watch_url):
-        continue
+        # Keep watchUrl empty until an authorized viewing URL is available.
+        matches.append({
+            "home": home,
+            "away": away,
+            "kickoff": fixture.get("date", ""),
+            "status": status_text or status_code or "Chưa rõ trạng thái",
+            "watchUrl": "",
+        })
 
-    cleaned.append({
-        "home": home,
-        "away": away,
-        "kickoff": kickoff or "Chưa rõ giờ",
-        "status": status or "Chưa rõ trạng thái",
-        "watchUrl": watch_url,
-    })
+# Do not overwrite the existing file if the API returns no fixtures.
+if not matches:
+    fail("API returned no fixtures for today and tomorrow; keeping existing matches.json.")
 
-# Keep an empty/invalid feed from accidentally erasing a working list.
-if not cleaned:
-    fail("No valid matches found; keeping the previous matches.json unchanged.")
+# Remove duplicate fixture entries.
+unique = {}
+for match in matches:
+    key = (match["home"], match["away"], match["kickoff"])
+    unique[key] = match
 
-new_content = json.dumps(cleaned, ensure_ascii=False, indent=2) + "\n"
+matches = sorted(unique.values(), key=lambda item: item["kickoff"])
+
+new_content = json.dumps(matches, ensure_ascii=False, indent=2) + "\n"
 old_content = OUTPUT.read_text(encoding="utf-8") if OUTPUT.exists() else ""
 
 if new_content == old_content:
-    print(f"No changes; {len(cleaned)} matches already current.")
+    print(f"No changes; {len(matches)} fixtures already current.")
 else:
     OUTPUT.write_text(new_content, encoding="utf-8")
-    print(f"Updated matches.json with {len(cleaned)} matches.")
+    print(f"Updated matches.json with {len(matches)} fixtures.")
