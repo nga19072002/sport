@@ -1,9 +1,14 @@
-[
-  {
-    "home": "Đội A",
-    "away": "Đội B",
-    "kickoff": "20:30",
-    "status": "Ví dụ minh họa",
-    "watchUrl": "https://example.com/"
-  }
-]
+{
+  "updatedAt": "2026-10-18T00:00:00Z",
+  "matches": [
+    {
+      "id": "demo-001",
+      "league": "Ví dụ",
+      "home": "Đội nhà",
+      "away": "Đội khách",
+      "kickoff": "20:00",
+      "status": "Dữ liệu minh họa",
+      "watchUrl": ""
+    }
+  ]
+}
