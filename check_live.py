@@ -1,60 +1,110 @@
-name: Tự động lọc link khi xem_football có cập nhật
+import os
+import requests
+from requests.adapters import HTTPAdapter
+from concurrent.futures import ThreadPoolExecutor
+from urllib.parse import urlparse
 
-on:
-  workflow_dispatch: # Đón nhận lệnh kích hoạt tức thì từ lệnh curl của kho xem_football
+# --- CẤU HÌNH TỐI ƯU CẬP NHẬT ---
+STREAM_TIMEOUT = 5.0
+MAX_WORKERS = 50
+TARGET_URL = "https://s8tv011.com/"
+OUTPUT_M3U_PATH = "TVlive.m3u"
 
-permissions:
-  contents: write # Quyền tự ghi file sạch TVlive.m3u vào chính nó
+session = requests.Session()
+adapter = HTTPAdapter(pool_connections=MAX_WORKERS, pool_maxsize=MAX_WORKERS)
+session.mount("http://", adapter)
+session.mount("https://", adapter)
 
-jobs:
-  check-and-save:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
+def is_working_stream(url: str) -> bool:
+    if not url or not url.startswith(("http://", "https://")):
+        return False
+    
+    parsed_url = urlparse(url)
+    base_origin = f"{parsed_url.scheme}://{parsed_url.netloc}"
 
-    steps:
-      # 1. Kéo mã nguồn của chính kho xembongda về thư mục gốc
-      - name: Checkout kho xembongda
-        uses: actions/checkout@v4
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Accept": "*/*",
+        "Connection": "keep-alive",
+        "Referer": base_origin,
+        "Origin": base_origin
+    }
 
-      # 2. Kéo kho xem_football về thư mục riêng biệt
-      - name: Checkout kho xem_football để lấy file trực tiếp
-        uses: actions/checkout@v4
-        with:
-          repository: huybuonvp/xem_football
-          path: xem_football_folder
+    try:
+        response = session.head(url, headers=headers, timeout=STREAM_TIMEOUT, allow_redirects=True)
+        if response.status_code in [200, 206]:
+            return True
+    except Exception:
+        pass
 
-      # 3. Khởi tạo Python (Bỏ qua cơ chế cache phức tạp vì chỉ cài 1 thư viện)
-      - name: Cài đặt Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
+    try:
+        with session.get(url, headers=headers, timeout=STREAM_TIMEOUT, stream=True, allow_redirects=True) as response:
+            if response.status_code in [200, 206]:
+                response.close()
+                return True
+    except Exception:
+        pass
 
-      # 4. Cài đặt trực tiếp thư viện requests (Mất ~1-2 giây, nhanh hơn nạp cache)
-      - name: Cài đặt thư viện nâng cao
-        run: |
-          python -m pip install --upgrade pip
-          pip install requests==2.32.3
+    return False
 
-      # 5. Chạy mã kiểm tra live
-      # Lưu ý: Trong file check_live.py, bạn đọc file m3u bằng đường dẫn: "xem_football_folder/All_CHANNEL.m3u"
-      - name: Chạy mã kiểm tra live siêu tốc
-        run: python check_live.py
+def parse_m3u(text_content: str) -> list:
+    items = []
+    lines = text_content.splitlines()
+    temp_extinf = None
+    
+    for line in lines:
+        line = line.strip()
+        if not line: 
+            continue
+        if line.startswith("#EXTINF:"):
+            temp_extinf = line
+        elif line.startswith(("http://", "https://")):
+            if temp_extinf:
+                items.append({"extinf": temp_extinf, "url": line})
+                temp_extinf = None
+            else:
+                items.append({"extinf": "#EXTINF:-1,Kênh không tên", "url": line})
+    return items
 
-      # 6. Thiết lập danh tính Git hệ thống
-      - name: Cấu hình Git hệ thống
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+def main():
+    print(f"[INFO] Đang tải dữ liệu từ: {TARGET_URL}")
+    
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+    }
 
-      # 7. Tự động đẩy file TVlive.m3u sạch lên hệ thống (Đã sửa lỗi kích hoạt lực lượng)
-      - name: Tự cập nhật TVlive.m3u lên kho xembongda
-        run: |
-          git add TVlive.m3u
-          if ! git diff --cached --quiet; then
-            git commit -m "GitHub Actions: Đồng bộ siêu tốc TVlive.m3u [skip ci]"
-            # ĐÃ THAY ĐỔI: Thêm --force để ép ghi đè file m3u sạch lên kho lưu trữ, bỏ qua check xung đột lịch sử
-            git push origin main --force
-            echo "[SUCCESS] Đã cập nhật file TVlive.m3u thành công!"
-          else
-            echo "[INFO] Kênh không có sự thay đổi. Bỏ qua push."
-          fi
+    try:
+        response = session.get(TARGET_URL, headers=headers, timeout=15)
+        if response.status_code != 200:
+            print(f"[ERROR] Không thể truy cập trang, mã lỗi: {response.status_code}")
+            return
+        raw_content = response.text
+    except Exception as e:
+        print(f"[ERROR] Lỗi kết nối tới trang đích: {e}")
+        return
+
+    raw_items = parse_m3u(raw_content)
+
+    if not raw_items:
+        print("[WARN] Không tìm thấy dữ liệu kênh hoặc định dạng M3U hợp lệ từ nguồn này.")
+        return
+
+    print(f"[INFO] Quét {len(raw_items)} kênh bằng {MAX_WORKERS} luồng...")
+
+    urls = [item["url"] for item in raw_items]
+    
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        results = list(executor.map(is_working_stream, urls))
+
+    live_count = 0
+    with open(OUTPUT_M3U_PATH, "w", encoding="utf-8") as f:
+        f.write("#EXTM3U\n")
+        for i, is_alive in enumerate(results):
+            if is_alive:
+                f.write(f"{raw_items[i]['extinf']}\n{raw_items[i]['url']}\n")
+                live_count += 1
+
+    print(f"{'-'*30}\n[OK] Hoàn tất! Giữ lại Live: {live_count}/{len(raw_items)}")
+
+if __name__ == "__main__":
+    main()
