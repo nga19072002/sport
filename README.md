@@ -26,3 +26,8 @@ python bot.py
 ## GitHub Actions
 
 The workflow runs every 3 hours and can also be started manually under **Actions → Auto update sport playlist → Run workflow**. It commits the three generated output files when they change.
+
+
+## Why `sport.m3u` may show no channels
+
+If the bot does not find any `.m3u`/`.m3u8` URL exposed in the normal page DOM, there are no playable entries to put in the playlist. This version adds diagnostic comments, but media players do not show comments as channels. Open `matches.csv` or `matches.json` and inspect the `status` and `note` fields. `NO_PUBLIC_M3U8_IN_DOM` means no URL was found in ordinary page DOM; it does not prove that the match has no stream.
