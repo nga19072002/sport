@@ -4,6 +4,7 @@ import requests
 
 TARGET_URLS = [
     "https://s8tv011.com/",
+    "https://biaomtv22.com/",
 ]
 
 OUTPUT_FILE = "sport.m3u"
