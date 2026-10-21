@@ -1,0 +1,60 @@
+name: Tự động lọc link khi xem_football có cập nhật
+
+on:
+  workflow_dispatch: # Đón nhận lệnh kích hoạt tức thì từ lệnh curl của kho xem_football
+
+permissions:
+  contents: write # Quyền tự ghi file sạch TVlive.m3u vào chính nó
+
+jobs:
+  check-and-save:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      # 1. Kéo mã nguồn của chính kho xembongda về thư mục gốc
+      - name: Checkout kho xembongda
+        uses: actions/checkout@v4
+
+      # 2. Kéo kho xem_football về thư mục riêng biệt
+      - name: Checkout kho xem_football để lấy file trực tiếp
+        uses: actions/checkout@v4
+        with:
+          repository: huybuonvp/xem_football
+          path: xem_football_folder
+
+      # 3. Khởi tạo Python (Bỏ qua cơ chế cache phức tạp vì chỉ cài 1 thư viện)
+      - name: Cài đặt Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      # 4. Cài đặt trực tiếp thư viện requests (Mất ~1-2 giây, nhanh hơn nạp cache)
+      - name: Cài đặt thư viện nâng cao
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests==2.32.3
+
+      # 5. Chạy mã kiểm tra live
+      # Lưu ý: Trong file check_live.py, bạn đọc file m3u bằng đường dẫn: "xem_football_folder/All_CHANNEL.m3u"
+      - name: Chạy mã kiểm tra live siêu tốc
+        run: python check_live.py
+
+      # 6. Thiết lập danh tính Git hệ thống
+      - name: Cấu hình Git hệ thống
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      # 7. Tự động đẩy file TVlive.m3u sạch lên hệ thống (Đã sửa lỗi kích hoạt lực lượng)
+      - name: Tự cập nhật TVlive.m3u lên kho xembongda
+        run: |
+          git add TVlive.m3u
+          if ! git diff --cached --quiet; then
+            git commit -m "GitHub Actions: Đồng bộ siêu tốc TVlive.m3u [skip ci]"
+            # ĐÃ THAY ĐỔI: Thêm --force để ép ghi đè file m3u sạch lên kho lưu trữ, bỏ qua check xung đột lịch sử
+            git push origin main --force
+            echo "[SUCCESS] Đã cập nhật file TVlive.m3u thành công!"
+          else
+            echo "[INFO] Kênh không có sự thay đổi. Bỏ qua push."
+          fi
