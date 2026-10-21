@@ -3,8 +3,8 @@ import re
 import requests
 
 TARGET_URLS = [
-    "https://s8tv011.com/",
-    "https://biaomtv22.com/",
+    "https://s8tv011.com/api/matches",
+    
 ]
 
 OUTPUT_FILE = "sport.m3u"
