@@ -1,3 +1,41 @@
 #EXTM3U
-#EXTINF:-1 tvg-logo="https://s8tv011.com/favicon.ico" group-title="S8TV Live", ⚽ Stream Pending
-https://example.com/stream.m3u8
+#EXTINF:-1 tvg-logo="https://s8tv011.com/favicon.ico" group-title="S8TV Sports", ⚽ Atletico Madrid vs Manchester United
+https://media.lauthaitv.site/hls/ff5c106f-cba3-4c6d-8019-743d700a4594/attempt-1/master.m3u8
+#EXTINF:-1 tvg-logo="https://s8tv011.com/favicon.ico" group-title="S8TV Sports", ⚽ BARCELONA VS GALATASARAY
+https://media.lauthaitv.site/hls/1fc4e848-ff0b-47ea-9923-8ea46cc5e550/attempt-1/master.m3u8
+#EXTINF:-1 tvg-logo="https://s8tv011.com/favicon.ico" group-title="S8TV Sports", ⚽ HIGHLIGHT ARSENAL VS LEEDS
+https://media.lauthaitv.site/hls/159a4968-3027-4993-812f-4d626bb8f8ae/attempt-1/master.m3u8
+#EXTINF:-1 tvg-logo="https://s8tv011.com/favicon.ico" group-title="S8TV Sports", ⚽ Atletico Madrid vs Manchester United
+https://media.lauthaitv.site/hls/0722a890-0420-4b81-bae0-72a8d20cce23/attempt-1/master.m3u8
+#EXTINF:-1 tvg-logo="https://s8tv011.com/favicon.ico" group-title="S8TV Sports", ⚽ Atletico Madrid vs Manchester United
+https://media.lauthaitv.site/hls/0e1a9402-5147-4ab8-bc11-a5489b8290f5/attempt-1/master.m3u8
+#EXTINF:-1 tvg-logo="https://s8tv011.com/favicon.ico" group-title="S8TV Sports", ⚽ BARCELONA VS GALATASARAY
+https://media.lauthaitv.site/hls/6f2bfbcc-ae5e-4bcf-aa8f-cdaa13f2abbc/attempt-1/master.m3u8
+#EXTINF:-1 tvg-logo="https://s8tv011.com/favicon.ico" group-title="S8TV Sports", ⚽ BARCELONA VS GALATASARAY
+https://hls.lauthaitv.cc/live/tigres-leon-mexliga/index.m3u8
+#EXTINF:-1 tvg-logo="https://s8tv011.com/favicon.ico" group-title="S8TV Sports", ⚽ HIGHLIGHT ARSENAL VS LEEDS
+https://media.lauthaitv.site/hls/0542ad8d-1129-454e-b8e1-56e2852582ea/attempt-1/master.m3u8
+#EXTINF:-1 tvg-logo="https://s8tv011.com/favicon.ico" group-title="S8TV Sports", ⚽ o Manchester City vs Sunderland
+https://cdnhls.xbdbotv.live/live/MTk4NzM2OTA6YThsY2E2YTk4dWpna3Q2bXcydDZwYXRxOnZ0YnZuOW5qNGVpOWx4bWVlcjJzaDR4Zg/index.m3u8
+#EXTINF:-1 tvg-logo="https://s8tv011.com/favicon.ico" group-title="S8TV Sports", ⚽ o AFC Bournemouth vs Liverpool
+https://cdnhls.xbdbotv.live/live/MTk4NzM2OTE6aGd5eDdwZGEwMmRlNWExZXZhMThvNnRnOmFkaW15MDUwb3A0NXdoYXQ1cHdsejV0aQ/index.m3u8
+#EXTINF:-1 tvg-logo="https://s8tv011.com/favicon.ico" group-title="S8TV Sports", ⚽ Hove Albion vs Arsenal
+https://cdnhls.xbdbotv.live/live/MTk4NzI2MDg6eGF6NjVwbnRsYnVzMmFsbGFrMXk3bTdyOmNnZTdnMTFodGIxMDdiY3I3b2dqZXJ3ag/index.m3u8
+#EXTINF:-1 tvg-logo="https://s8tv011.com/favicon.ico" group-title="S8TV Sports", ⚽ Real Madrid vs RB Leipzig 02
+https://cdnhls.xbdbotv.live/live/MTk4NzM2OTM6ZDBuMm5wczd6c2ZuaXBpZ290dzI4bDd4OmlzdGJ0aDczbnNvM3Y0MHM2N2lpOTVpcg/index.m3u8
+#EXTINF:-1 tvg-logo="https://s8tv011.com/favicon.ico" group-title="S8TV Sports", ⚽ Real Betis vs Feyenoord 02
+https://cdnhls.xbdbotv.live/live/MTk3MzI2ODY6dGljMHIwY2xmNjhsaWxyajl3eDMyeXd6OmpwcXZwdnc3b3NkcmQyNjR2bmRjczQyeg/index.m3u8
+#EXTINF:-1 tvg-logo="https://s8tv011.com/favicon.ico" group-title="S8TV Sports", ⚽ Bayern Munich vs Arsenal 02
+https://cdnhls.xbdbotv.live/live/MTk4NzMyNTE6bjlsaDFnc2lrZDhzZjZhZW5oZjl2cG9xOmw3eHg3eHAzank0YWlyeXl4dG04ejVodg/index.m3u8
+#EXTINF:-1 tvg-logo="https://s8tv011.com/favicon.ico" group-title="S8TV Sports", ⚽ Aston Villa vs Viking 02
+https://cdnhls.xbdbotv.live/live/MTk4NzI2MzQ6eGF6NjVwbnRsYnVzMmFsbGFrMXk3bTdyOnlhZXM1M2FxZjB6YnkxemxnNXpzdDc5bw/index.m3u8
+#EXTINF:-1 tvg-logo="https://s8tv011.com/favicon.ico" group-title="S8TV Sports", ⚽ Levante vs Athletic Bilbao 01
+https://cdnhls.xbdbotv.live/live/MTk4NzI2MzQ6aGY1ODc5dDVoeXprdGJiajd3azBucmU2Om5qenR5NXVpNjB4bzFkNTZrOHlxZ2Vqaw/index.m3u8
+#EXTINF:-1 tvg-logo="https://s8tv011.com/favicon.ico" group-title="S8TV Sports", ⚽ LOSC Lille vs Galatasaray 23
+https://cdnhls.xbdbotv.live/live/MTk4MTM1MzE6dWppY2ViaXFnN2Fmazdhendla3Q3azE3OmRvam44azQ3MnJsMmFpaWFvcDNheGxqbA/index.m3u8
+#EXTINF:-1 tvg-logo="https://s8tv011.com/favicon.ico" group-title="S8TV Sports", ⚽ Como vs Manchester United 23
+https://cdnhls.xbdbotv.live/live/MTk3MTkxMjA6bHEzbHRwejVpcXZwcnF4Ym42cmVlc3Q2Oms0MWlvNXZwNjB1eThsa3l0bTMzNzR1cQ/index.m3u8
+#EXTINF:-1 tvg-logo="https://s8tv011.com/favicon.ico" group-title="S8TV Sports", ⚽ Como vs Manchester United 23
+https://cdnhls.xbdbotv.live/live/MTk3MTkxMTk6YThsY2E2YTk4dWpna3Q2bXcydDZwYXRxOnBvMzUyaDd0NGp0Nm4xNjlubXh5NXNlMg/index.m3u8
+#EXTINF:-1 tvg-logo="https://s8tv011.com/favicon.ico" group-title="S8TV Sports", ⚽ Persija vs Arema 19
+https://cdnhls.xbdbotv.live/live/MTk3MTkxMTI6aGd5eDdwZGEwMmRlNWExZXZhMThvNnRnOng0cnVlZ2Q3cG9nem4yOTk0dHJwY2podA/index.m3u8
