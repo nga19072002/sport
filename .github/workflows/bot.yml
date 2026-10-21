@@ -2,7 +2,7 @@ name: Auto Update Sport M3U Playlist
 
 on:
   schedule:
-    # Chạy tự động mỗi 3 giờ (theo giờ UTC)
+    # Chạy tự động mỗi 30 phút (theo giờ UTC)
     - cron: '*/30 * * * *'
   workflow_dispatch: # Nút bấm chạy thủ công trên giao diện GitHub
 
