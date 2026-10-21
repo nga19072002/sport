@@ -3,7 +3,7 @@ import re
 import requests
 
 TARGET_URLS = [
-    "https://s8tv011.com/lich-truc-tiep",
+    "https://s8tv011.com/",
     
 ]
 
