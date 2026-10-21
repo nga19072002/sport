@@ -1,0 +1,12 @@
+{
+  "start_url": "https://s8tv011.com/",
+  "timeout_ms": 25000,
+  "settle_ms": 2500,
+  "max_match_pages": 80,
+  "max_load_more_clicks": 15,
+  "selectors": {
+    "match_card": "",
+    "match_title": "",
+    "match_link": "a[href]"
+  }
+}
