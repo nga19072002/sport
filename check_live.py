@@ -4,7 +4,6 @@ from requests.adapters import HTTPAdapter
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse
 
-# --- CẤU HÌNH TỐI ƯU CẬP NHẬT ---
 STREAM_TIMEOUT = 5.0
 MAX_WORKERS = 50
 TARGET_URL = "https://s8tv011.com/"
@@ -73,38 +72,43 @@ def main():
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
     }
 
+    raw_items = []
     try:
         response = session.get(TARGET_URL, headers=headers, timeout=15)
-        if response.status_code != 200:
+        if response.status_code == 200:
+            raw_content = response.text
+            raw_items = parse_m3u(raw_content)
+        else:
             print(f"[ERROR] Không thể truy cập trang, mã lỗi: {response.status_code}")
-            return
-        raw_content = response.text
     except Exception as e:
         print(f"[ERROR] Lỗi kết nối tới trang đích: {e}")
-        return
 
-    raw_items = parse_m3u(raw_content)
+    valid_items = []
+    if raw_items:
+        print(f"[INFO] Quét {len(raw_items)} kênh bằng {MAX_WORKERS} luồng...")
+        urls = [item["url"] for item in raw_items]
+        
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            results = list(executor.map(is_working_stream, urls))
 
-    if not raw_items:
-        print("[WARN] Không tìm thấy dữ liệu kênh hoặc định dạng M3U hợp lệ từ nguồn này.")
-        return
-
-    print(f"[INFO] Quét {len(raw_items)} kênh bằng {MAX_WORKERS} luồng...")
-
-    urls = [item["url"] for item in raw_items]
-    
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        results = list(executor.map(is_working_stream, urls))
-
-    live_count = 0
-    with open(OUTPUT_M3U_PATH, "w", encoding="utf-8") as f:
-        f.write("#EXTM3U\n")
         for i, is_alive in enumerate(results):
             if is_alive:
-                f.write(f"{raw_items[i]['extinf']}\n{raw_items[i]['url']}\n")
-                live_count += 1
+                valid_items.append(raw_items[i])
+    else:
+        print("[WARN] Không tìm thấy dữ liệu M3U từ nguồn, tạo file dự phòng để tránh lỗi.")
 
-    print(f"{'-'*30}\n[OK] Hoàn tất! Giữ lại Live: {live_count}/{len(raw_items)}")
+    # BẮT BUỘC LUÔN GHI FILE (Dù có lọc được hay không)
+    with open(OUTPUT_M3U_PATH, "w", encoding="utf-8") as f:
+        f.write("#EXTM3U\n")
+        if valid_items:
+            for item in valid_items:
+                f.write(f"{item['extinf']}\n{item['url']}\n")
+        else:
+            # Ghi dòng mẫu tạm thời nếu không có kênh sống để file không bị trống
+            f.write('#EXTINF:-1 tvg-logo="https://s8tv011.com/favicon.ico" group-title="S8TV Live", ⚽ Stream Pending\n')
+            f.write("https://example.com/stream.m3u8\n")
+
+    print(f"{'-'*30}\n[OK] Hoàn tất! Đã ghi file {OUTPUT_M3U_PATH} thành công.")
 
 if __name__ == "__main__":
     main()
