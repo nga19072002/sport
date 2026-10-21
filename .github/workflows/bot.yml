@@ -25,7 +25,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          playwright install --with-deps chromium # Cài trình duyệt Chrome cho GitHub Actions
+          playwright install --with-deps chromium
 
       - name: Run Bot
         run: python bot.py
@@ -34,6 +34,7 @@ jobs:
         run: |
           git config --global user.name "GitHub Actions Bot"
           git config --global user.email "actions@github.com"
+          git status
           git add sport.m3u
-          git commit -m "Auto-update sport.m3u via Playwright" || echo "No changes"
+          git commit -m "Auto-update sport.m3u via Playwright" || echo "Không có thay đổi"
           git push
