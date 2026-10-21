@@ -3,7 +3,7 @@ import re
 import requests
 
 TARGET_URLS = [
-    "https://s8tv011.com/api/matches",
+    "https://s8tv011.com/",
     
 ]
 
