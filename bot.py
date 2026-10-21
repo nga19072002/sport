@@ -1,19 +1,31 @@
 import os
+import re
 import requests
 
-# Điền URL nguồn M3U thực tế của bạn vào đây
 TARGET_URLS = [
-    "https://s8tv011.com/", 
+    "https://s8tv011.com/",
 ]
 
 OUTPUT_FILE = "sport.m3u"
 
+# Các từ khóa ưu tiên bắt link trận đấu bóng đá / thể thao
+FOOTBALL_KEYWORDS = [
+    "vs", "live", "bongda", "football", "soccer", "tructiep", 
+    "tran", "cup", "league", "premier", "champions", "laliga", "m3u8"
+]
+
+EXCLUDE_KEYWORDS = [
+    "ads", "banner", "promo", "trailer", "highlight", "news"
+]
+
 def fetch_and_build_sport_playlist():
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Referer": "https://s8tv011.com/"
     }
 
-    valid_entries = []
+    m3u_entries = []
+    found_urls = set()
 
     for url in TARGET_URLS:
         try:
@@ -22,40 +34,50 @@ def fetch_and_build_sport_playlist():
             print(f"Mã phản hồi từ server (Status code): {response.status_code}")
             
             if response.status_code == 200:
-                content = response.text
-                lines = content.splitlines()
-                print(f"Tổng số dòng đọc được từ nguồn: {len(lines)}")
+                html_content = response.text
                 
-                # Quét file theo từng cặp dòng: #EXTINF và Link ngay bên dưới
-                i = 0
-                while i < len(lines) - 1:
-                    line = lines[i].strip()
-                    if line.startswith("#EXTINF:"):
-                        extinf_line = line
-                        next_line = lines[i+1].strip()
-                        
-                        # Kiểm tra dòng tiếp theo có phải link http không
-                        if next_line.startswith("http") and not next_line.startswith("#"):
-                            # Tạm thời LẤY TẤT CẢ các link tìm thấy trước để kiểm tra (bỏ qua bước lọc rác tạm thời)
-                            valid_entries.append((extinf_line, next_line))
-                            i += 2
-                            continue
-                    i += 1
+                # 1. Tìm tất cả các link m3u8 / stream trực tiếp xuất hiện trong trang S8TV
+                stream_pattern = r'https?://[^\s<>"\']+\.m3u8(?:\?[^\s<>"\']*)?'
+                streams = re.findall(stream_pattern, html_content, re.IGNORECASE)
+                
+                # 2. Bắt các thông tin trận đấu (Tên trận, giải đấu) từ HTML
+                # Bắt mẫu tên trận đấu dạng "Đội A vs Đội B"
+                match_titles = re.findall(r'([A-Za-z0-9\s]+?\s+vs\s+[A-Za-z0-9\s]+)', html_content, re.IGNORECASE)
+                
+                print(f"Tìm thấy {len(streams)} đường dẫn stream .m3u8!")
+                
+                for idx, stream_url in enumerate(streams, start=1):
+                    if stream_url in found_urls:
+                        continue
+                    
+                    # Kiểm tra loại bỏ link quảng cáo rác
+                    if any(bad in stream_url.lower() for bad in EXCLUDE_KEYWORDS):
+                        continue
+
+                    found_urls.add(stream_url)
+
+                    # Lấy tên trận đấu nếu quét được, hoặc đặt tên mặc định
+                    title = match_titles[idx-1].strip() if idx <= len(match_titles) else f"S8TV Match Stream {idx}"
+                    
+                    # Tạo cấu trúc #EXTINF chuẩn đẹp có Logo S8TV
+                    extinf = f'#EXTINF:-1 tvg-logo="https://s8tv011.com/favicon.ico" group-title="S8TV Sports", ⚽ {title}'
+                    m3u_entries.append((extinf, stream_url))
             else:
                 print(f"Lỗi: Không truy cập được trang, mã lỗi {response.status_code}")
-        except Exception as e:
-            print(f"Đã xảy ra lỗi ngoại lệ: {e}")
 
-    # Xây dựng nội dung file sport.m3u
+        except Exception as e:
+            print(f"Đã xảy ra lỗi khi cào dữ liệu: {e}")
+
+    # Tạo nội dung danh sách M3U
     m3u_lines = ["#EXTM3U"]
 
-    if valid_entries:
-        print(f"Thành công! Đã gom được {len(valid_entries)} luồng.")
-        for extinf, link in valid_entries:
+    if m3u_entries:
+        print(f"Thành công! Đã tạo được {len(m3u_entries)} luồng phát M3U.")
+        for extinf, link in m3u_entries:
             m3u_lines.append(extinf)
             m3u_lines.append(link)
     else:
-        print("CẢNH BÁO: Không tìm thấy luồng hợp lệ nào!")
+        print("CẢNH BÁO: Không tìm thấy link luồng .m3u8 trực tiếp nào trên trang web HTML.")
 
     # Ghi ra file sport.m3u
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
