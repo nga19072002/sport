@@ -4,8 +4,8 @@ import requests
 
 # 1. Các URL nguồn bạn muốn quét link thể thao
 TARGET_URLS = [
-    "https://khoga.live/",
-    "https://90phutzaf.tv/"
+    "https://live.chuoichien.tv",
+    "https://colatv.live"
 ]
 
 OUTPUT_FILE = "sport.m3u"
