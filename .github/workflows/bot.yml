@@ -1,10 +1,9 @@
-name: Auto Update Sport M3U Playlist
+name: Auto Grab M3U with Playwright
 
 on:
   schedule:
-    # Chạy tự động mỗi 30 phút (theo giờ UTC)
     - cron: '0 */3 * * *'
-  workflow_dispatch: # Nút bấm chạy thủ công trên giao diện GitHub
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -14,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -26,19 +25,15 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          playwright install --with-deps chromium # Cài trình duyệt Chrome cho GitHub Actions
 
-      - name: Run Bot Grabber
+      - name: Run Bot
         run: python bot.py
 
-      - name: Commit and Push sport.m3u
+      - name: Commit and Push
         run: |
           git config --global user.name "GitHub Actions Bot"
           git config --global user.email "actions@github.com"
-          
-          # Kiểm tra xem file sport.m3u có tồn tại hay không trước khi add
-          if [ -f "sport.m3u" ]; then
-            git add sport.m3u
-            git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update sport.m3u playlist" && git push)
-          else
-            echo "File sport.m3u không tồn tại, bỏ qua bước commit."
-          fi
+          git add sport.m3u
+          git commit -m "Auto-update sport.m3u via Playwright" || echo "No changes"
+          git push
