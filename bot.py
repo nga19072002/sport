@@ -3,7 +3,7 @@ import re
 from playwright.sync_api import sync_playwright
 
 OUTPUT_FILE = "sport.m3u"
-TARGET_URL = "https://s8tv011.com/"
+TARGET_URL = "https://s8tv011.com/lich-truc-tiep"
 
 def capture_m3u8_links():
     m3u8_links = set()
