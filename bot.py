@@ -1,65 +1,115 @@
 import os
-import re
-from playwright.sync_api import sync_playwright
+import requests
+from requests.adapters import HTTPAdapter
+from concurrent.futures import ThreadPoolExecutor
+from urllib.parse import urlparse
 
-OUTPUT_FILE = "sport.m3u"
-TARGET_URL = "https://s8tv011.com/lich-truc-tiep"
+# --- CẤU HÌNH TỐI ƯU CẬP NHẬT ---
+STREAM_TIMEOUT = 5.0      # Thời gian chờ kiểm tra link (giây)
+MAX_WORKERS = 50          # Số luồng chạy song song
+TARGET_URL = "https://s8tv011.com/"  # Nguồn trang web/playlist cần lấy
+OUTPUT_M3U_PATH = "TVlive.m3u"
 
-def capture_m3u8_links():
-    m3u8_links = set()
+session = requests.Session()
+adapter = HTTPAdapter(pool_connections=MAX_WORKERS, pool_maxsize=MAX_WORKERS)
+session.mount("http://", adapter)
+session.mount("https://", adapter)
 
-    print("Đang khởi tạo trình duyệt Playwright...")
+def is_working_stream(url: str) -> bool:
+    """Kiểm tra link stream thông minh, hạn chế tối đa việc nhận diện sai"""
+    if not url or not url.startswith(("http://", "https://")):
+        return False
+    
+    parsed_url = urlparse(url)
+    base_origin = f"{parsed_url.scheme}://{parsed_url.netloc}"
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Accept": "*/*",
+        "Connection": "keep-alive",
+        "Referer": base_origin,
+        "Origin": base_origin
+    }
+
+    # BƯỚC 1: Thử bằng HEAD trước (Nhanh, nhẹ mạng)
     try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            context = browser.new_context(
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            )
-            page = context.new_page()
+        response = session.head(url, headers=headers, timeout=STREAM_TIMEOUT, allow_redirects=True)
+        if response.status_code in [200, 206]:
+            return True
+    except Exception:
+        pass
 
-            # Lắng nghe kết nối mạng
-            def handle_request(request):
-                url = request.url.lower()
-                
-                # BỘ LỌC CHUẨN XÁC:
-                # 1. Phải chứa đuôi .m3u8 (luồng video chính) hoặc chứa từ khóa stream/live
-                # 2. KHÔNG lấy các tệp linh tinh như .png, .jpg, .css, .js, .ico, hoặc các đoạn ts quá ngắn
-                is_valid_ext = ".m3u8" in url or "playlist" in url or "index" in url
-                is_junk = any(ext in url for ext in [".png", ".jpg", ".jpeg", ".css", ".js", ".ico", ".woff", ".json"])
-                
-                if is_valid_ext and not is_junk:
-                    print(f"[Bắt được link chuẩn]: {request.url}")
-                    m3u8_links.add(request.url)
+    # BƯỚC 2: Thử lại bằng GET với stream=True nếu HEAD bị chặn
+    try:
+        with session.get(url, headers=headers, timeout=STREAM_TIMEOUT, stream=True, allow_redirects=True) as response:
+            if response.status_code in [200, 206]:
+                response.close()  # Giải phóng kết nối ngay
+                return True
+    except Exception:
+        pass
 
-            page.on("request", handle_request)
+    return False
 
-            print(f"Đang truy cập: {TARGET_URL}")
-            page.goto(TARGET_URL, timeout=45000, wait_until="domcontentloaded")
-            
-            # Đợi lâu hơn một chút (15 giây) để trang web load và kích hoạt player video
-            page.wait_for_timeout(15000)
-            browser.close()
+def parse_m3u(text_content: str) -> list:
+    """Parse M3U giữ nguyên cấu trúc tivi chung"""
+    items = []
+    lines = text_content.splitlines()
+    temp_extinf = None
+    
+    for line in lines:
+        line = line.strip()
+        if not line: 
+            continue
+        if line.startswith("#EXTINF:"):
+            temp_extinf = line
+        elif line.startswith(("http://", "https://")):
+            if temp_extinf:
+                items.append({"extinf": temp_extinf, "url": line})
+                temp_extinf = None
+            else:
+                items.append({"extinf": "#EXTINF:-1,Kênh không tên", "url": line})
+    return items
+
+def main():
+    print(f"[INFO] Đang tải dữ liệu từ: {TARGET_URL}")
+    
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+    }
+
+    try:
+        response = session.get(TARGET_URL, headers=headers, timeout=15)
+        if response.status_code != 200:
+            print(f"[ERROR] Không thể truy cập trang, mã lỗi: {response.status_code}")
+            return
+        raw_content = response.text
     except Exception as e:
-        print(f"Lỗi khi duyệt web: {e}")
+        print(f"[ERROR] Lỗi kết nối tới trang đích: {e}")
+        return
 
-    # Xây dựng nội dung file M3U
-    m3u_lines = ["#EXTM3U"]
-    if m3u8_links:
-        print(f"Tìm thấy {len(m3u8_links)} link luồng chính xác!")
-        for idx, link in enumerate(sorted(m3u8_links), start=1):
-            extinf = f'#EXTINF:-1 tvg-logo="https://s8tv011.com/favicon.ico" group-title="S8TV Live", ⚽ S8TV Match Stream {idx}'
-            m3u_lines.append(extinf)
-            m3u_lines.append(link)
-    else:
-        print("Không tìm thấy link .m3u8 hợp lệ nào.")
-        m3u_lines.append('#EXTINF:-1 tvg-logo="https://s8tv011.com/favicon.ico" group-title="S8TV Live", ⚽ Stream Pending')
-        m3u_lines.append("https://example.com/stream.m3u8")
+    raw_items = parse_m3u(raw_content)
 
-    # Ghi file sport.m3u
-    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
-        f.write("\n".join(m3u_lines) + "\n")
+    if not raw_items:
+        print("[WARN] Không tìm thấy dữ liệu kênh hoặc định dạng M3U hợp lệ từ nguồn này.")
+        return
 
-    print(f"Đã cập nhật file {OUTPUT_FILE} thành công!")
+    print(f"[INFO] Quét {len(raw_items)} kênh bằng {MAX_WORKERS} luồng...")
+
+    urls = [item["url"] for item in raw_items]
+    
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        results = list(executor.map(is_working_stream, urls))
+
+    # Ghi file kết quả
+    live_count = 0
+    with open(OUTPUT_M3U_PATH, "w", encoding="utf-8") as f:
+        f.write("#EXTM3U\n")
+        for i, is_alive in enumerate(results):
+            if is_alive:
+                f.write(f"{raw_items[i]['extinf']}\n{raw_items[i]['url']}\n")
+                live_count += 1
+
+    print(f"{'-'*30}\n[OK] Hoàn tất! Giữ lại Live: {live_count}/{len(raw_items)}")
 
 if __name__ == "__main__":
-    capture_m3u8_links()
+    main()
